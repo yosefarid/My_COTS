@@ -4,7 +4,7 @@
 /*configure the LCD BIT MODE, The options are:		1- FOUR_BIT
  * 													2- EIGHT_BIT*/
 
-#define CLCD_u8BIT_MODE				FOUR_BIT
+#define CLCD_u8BIT_MODE				EIGHT_BIT
 
 #define CLCD_u8CTRL_Port			DIO_u8PORTC
 
@@ -12,7 +12,7 @@
 #define CLCD_u8RW_PIN				DIO_u8PIN1
 #define CLCD_u8E_PIN				DIO_u8PIN2
 
-#define CLCD_u8Data_Port			DIO_u8PORTC
+#define CLCD_u8Data_Port			DIO_u8PORTA
 
 #if CLCD_u8BIT_MODE == FOUR_BIT
 #define CLCD_u8D4_Pin				DIO_u8PIN3

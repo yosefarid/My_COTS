@@ -154,18 +154,27 @@ void CLCD_voidSendNumber(sint32 Copy_s32Number)
 		}
 }
 
-void CLCD_voidGoToXY(uint8  Copy_u8XPos, uint8 Copy_u8YPos)
+void CLCD_voidGoToXY(uint8 Copy_u8XPos, uint8 Copy_u8YPos)
 {
-	uint8 Local_u8Address = 0x40 * Copy_u8YPos + Copy_u8XPos;
+	uint8 Local_u8Address ;
+	if(Copy_u8YPos == 0u)
+	{
+		Local_u8Address = Copy_u8XPos;
+	}
+	else if(Copy_u8YPos == 1u)
+	{
+		Local_u8Address = 0x40 + Copy_u8XPos;
+	}
+	// Local_u8Address = 0x40 * Copy_u8YPos + Copy_u8XPos;
 
-	/*set bit 7 for address command*/
-	SET_BIT(Local_u8Address , 7);
+	/*Set bit 7 for SetDDRAM Address command*/
+	SET_BIT(Local_u8Address,7);
 
-	/*execute set DDRAM address command*/
+	/*Execute Set DDRAM Address command*/
 	CLCD_voidSendCmd(Local_u8Address);
 }
 
-uint8 CLCD_u8SendSpcialCharacter(uint8 Copy_u8LocationNum , uint8 * Copy_pu8Pattern , uint8  Copy_u8XPos, uint8 Copy_u8YPos)
+uint8 CLCD_u8SendSpecialCharacter(uint8 Copy_u8LocationNum , uint8 * Copy_pu8Pattern , uint8  Copy_u8XPos, uint8 Copy_u8YPos)
 {
 	uint8 Local_u8ErrState = OK;
 
