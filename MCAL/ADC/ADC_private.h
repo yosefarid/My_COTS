@@ -1,24 +1,34 @@
+/*******************************************************************/
+/***************     Author: Youssef_Farid		  *****************/
+/***************     Layer: MCAL                  ****************/
+/***************     ADC_private                  ***************/
+/***************************************************************/
+
 #ifndef ADC_PRIVATE_H
 #define ADC_PRIVATE_H
 
-/*Voltage reference options*/
+/**
+ * @brief Macros to set Voltage reference options.
+ */
 #define AREF							1u
 #define AVCC							2u
 #define INTERNAL						3u
 
-/*Resolution options*/
+/**
+ * @brief Macros to set Resolution options.
+ */
 #define _8_BIT							1u
 #define _10_BIT							2u
 
-/*Conversion mode options*/
+/**
+ * @brief Macros to set Conversion mode options.
+ */
 #define Manual							1u
 #define Auto_Trigger	   			 	2u
 
-/*ADC Interrupt State options*/
-#define ON           	  				1u
-#define OFF         	    			2u
-
-/*Prescaler Division Factor options*/
+/**
+ * @brief Macros to set Prescaler Division Factor options and initialization.
+ */
 #define Division_by_2       			1u
 #define Division_by_4       			2u
 #define Division_by_8       			3u
@@ -29,7 +39,9 @@
 #define Prescaler_Bit_Mask				0b11111000
 #define Prescaler_Bit_Pos				0u
 
-/*Trigger Source options*/
+/**
+ * @brief Macros to set Trigger Source options and initialization.
+ */
 #if ADC_u8Conv_Mode == Auto_Trigger
 
 #define Free_Running_mode              	0u
@@ -45,8 +57,15 @@
 
 #endif
 
+/**
+ * @brief Macro to clear the channel bits.
+ */
 #define Channel_Bit_Mask				0b11100000
-#define	ADC_u16Err						1024
-#define ADC_Channel_Limit				64
+
+/**
+ * @brief Macros for busy ADC .
+ */
+#define IDLE							0u
+#define BUSY							1u
 
 #endif

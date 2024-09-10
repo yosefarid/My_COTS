@@ -1,3 +1,9 @@
+/*******************************************************************/
+/***************     Author: Youssef_Farid		  *****************/
+/***************     Layer: MCAL                  ****************/
+/***************     ADC_program                  ***************/
+/***************************************************************/
+
 #include "STD_TYPES.h"
 #include "BIT_MATH.h"
 #include "ErrType.h"
@@ -6,6 +12,12 @@
 #include "ADC_private.h"
 #include "ADC_config.h"
 #include "ADC_interface.h"
+
+static void(*ADC_pvCallBackNotificationFunc)(void) = NULL;
+static uint16* 	ADC_u16Result 	= NULL;
+static uint8	ADC_u8BusyFlag 	= IDLE;
+static uint8 	ADC_u8ChainFlag = 0u;
+static uint8* 	ADC_ChannelArr 	= NULL;
 
 void ADC_voidInit(void)
 {
@@ -55,17 +67,6 @@ void ADC_voidInit(void)
 #error 		Wrong Conversion Mode configration option
 #endif
 
-	/*ADC Interrupt State*/
-	/*Enable the ADC interrupt "Requires Global interrupt to be on"*/
-#if ADC_u8Interrupt == ON
-	SET_BIT(ADCSRA,ADCSRA_ADIE);
-	/*Disable the ADC interrupt*/
-#elif ADC_u8Interrupt == OFF
-	CLR_BIT(ADCSRA,ADCSRA_ADIE);
-#else
-#error 		Wrong Interrupt State configration option
-#endif
-
 	/*Configure the Prescaler Division Factor*/
 
 	/*Clear Prescaler Bits*/
@@ -76,37 +77,184 @@ void ADC_voidInit(void)
 	SET_BIT(ADCSRA,ADCSRA_ADEN);
 }
 
-uint16 ADC_u8GetChannelReading(uint8 Copy_u8Channel)
+uint8 ADC_u8StartConversionSynch(uint8 Copy_u8Channel , uint16* Copy_pu16Result)
 {
-	uint16 Local_u16Result;
-	if(Copy_u8Channel < ADC_Channel_Limit)
+	uint8 Local_u8ErrState = OK;
+	uint32 Local_u32Counter = 0u;
+
+	if(Copy_pu16Result != NULL)
 	{
-		/*Set ADC Channel*/
-		ADMUX &= Channel_Bit_Mask;/*Clear Channel Bits*/
-		ADMUX |= Copy_u8Channel;
+		if(ADC_u8BusyFlag == IDLE)
+		{
+			/*ADC is now busy*/
+			ADC_u8BusyFlag = BUSY;
 
-		/*Start conversion*/
-		SET_BIT(ADCSRA, ADCSRA_ADSC);
+			/*Set ADC Channel*/
+			ADMUX &= Channel_Bit_Mask;/*Clear Channel Bits*/
+			ADMUX |= Copy_u8Channel;
 
-		/*Polling with blocking on the conversion complete*/
-		while(!(GET_BIT(ADCSRA ,ADCSRA_ADIF)));
+			/*Start conversion*/
+			SET_BIT(ADCSRA, ADCSRA_ADSC);
 
-		/*Clear the conversion complete*/
-		SET_BIT(ADCSRA ,ADCSRA_ADIF);
+			/*Polling with blocking on the conversion complete on condition Timeout has not passed yet*/
+			while(((GET_BIT(ADCSRA ,ADCSRA_ADIF)) == 0u) && (Local_u32Counter < ADC_u32TimeOut))
+			{
+				Local_u32Counter ++;
+			}
 
-		/*Get the conversion result*/
+			if(Local_u32Counter == ADC_u32TimeOut)
+			{
+				/*Timeout has passed without the flag being raised*/
+				Local_u8ErrState = TIMEOUT_ERR;
+			}
+			else
+			{
+				/*The flag is raised before Timeout*/
+				/*Clear the conversion complete*/
+				SET_BIT(ADCSRA ,ADCSRA_ADIF);
+
+				/*Get the conversion result*/
 #if ADC_u8Resolution == _8_BIT
-		Local_u16Result = ADCH;
+				*Copy_pu16Result = ADCH;
 #elif ADC_u8Resolution == _10_BIT
-		Local_u16Result = ADC;
+				*Copy_pu16Result = ADC;
 #else
 #error 		Wrong Resolution configration option
 #endif
+			}
+
+			/*ADC is now IDLE*/
+			ADC_u8BusyFlag = IDLE;
+
+		}
+		else
+		{
+			Local_u8ErrState = BUSY_ERR;
+		}
+
 	}
 	else
 	{
-		Local_u16Result = ADC_u16Err;
+		Local_u8ErrState = NULL_PTR_ERR;
 	}
-	return Local_u16Result;
+
+	return Local_u8ErrState;
+}
+
+uint8 ADC_u8StartConversionAsynch(uint8 Copy_u8Channel , uint16* Copy_pu16Result , void(*Copy_pvNotificationFunc)(void))
+{
+	uint8 Local_u8ErrState = OK;
+
+	if((Copy_pu16Result != NULL) && (Copy_pvNotificationFunc != NULL))
+	{
+		if(ADC_u8BusyFlag == IDLE)
+		{
+			/*ADC is now busy*/
+			ADC_u8BusyFlag = BUSY;
+
+			/*Convert the Local ADC Result into Global*/
+			ADC_u16Result = Copy_pu16Result;
+
+			/*Convert the Local ADC Call Back into Global*/
+			ADC_pvCallBackNotificationFunc = Copy_pvNotificationFunc;
+
+			/*Set ADC Channel*/
+			ADMUX &= Channel_Bit_Mask;/*Clear Channel Bits*/
+			ADMUX |= Copy_u8Channel;
+
+			/*Start conversion*/
+			SET_BIT(ADCSRA, ADCSRA_ADSC);
+
+			/*Enable the ADC Conversion Complete interrupt "Requires Global interrupt to be on"*/
+			SET_BIT(ADCSRA,ADCSRA_ADIE);
+		}
+		else
+		{
+			Local_u8ErrState = BUSY_ERR;
+		}
+	}
+	else
+	{
+		Local_u8ErrState = NULL_PTR_ERR;
+	}
+
+
+	return Local_u8ErrState;
+}
+
+uint8 ADC_u8StartChainConvAsynch(uint8 Copy_u8NumOfChannels , uint8* Copy_u8Channels , uint16* Copy_pu16Results , void(*Copy_pvNotificationFunc)(void))
+{
+	uint8 Local_u8ErrState = OK;
+
+	if((Copy_pu16Results != NULL) && (Copy_pvNotificationFunc != NULL) && (Copy_u8Channels != NULL))
+	{
+		if(ADC_u8BusyFlag == IDLE)
+		{
+			/*ADC is now busy*/
+			ADC_u8BusyFlag = BUSY;
+
+			/*Convert the Local ADC Number into Global*/
+			ADC_u8ChainFlag = Copy_u8NumOfChannels;
+
+			/*Convert the Local ADC Channel Array into Global*/
+			ADC_ChannelArr = Copy_u8Channels;
+
+			/*ADC is now IDLE*/
+			ADC_u8BusyFlag = IDLE;
+
+			/*Start the conversion*/
+			ADC_u8StartConversionAsynch(*Copy_u8Channels , Copy_pu16Results , Copy_pvNotificationFunc);
+		}
+		else
+		{
+			Local_u8ErrState = BUSY_ERR;
+		}
+	}
+	else
+	{
+		Local_u8ErrState = NULL_PTR_ERR;
+	}
+
+	return Local_u8ErrState;
+}
+
+__attribute__((signal)) void __vector_16 (void);
+void __vector_16 (void)
+{
+	/*Read Result*/
+#if ADC_u8Resolution == _8_BIT
+	*ADC_u16Result = ADCH;
+#elif ADC_u8Resolution == _10_BIT
+	*ADC_u16Result = ADC;
+#else
+#error 		Wrong Resolution configration option
+#endif
+
+	/*Disable Conversion Complete interrupt*/
+	CLR_BIT(ADCSRA,ADCSRA_ADIE);
+
+	/*ADC is now IDLE*/
+	ADC_u8BusyFlag = IDLE;
+
+	/*Chain loop*/
+	if(ADC_u8ChainFlag > 1)
+	{
+		ADC_u8ChainFlag --;
+		ADC_u16Result ++;
+		ADC_ChannelArr ++;
+		ADC_u8StartConversionAsynch(*ADC_ChannelArr , ADC_u16Result , ADC_pvCallBackNotificationFunc);
+	}
+	else
+	{
+		/*Invoke the call back notification function*/
+		if(ADC_pvCallBackNotificationFunc != NULL)
+		{
+			ADC_pvCallBackNotificationFunc();
+		}
+		else
+		{
+			/*Do nothing*/
+		}
+	}
 }
 
