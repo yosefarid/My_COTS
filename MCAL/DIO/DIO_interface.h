@@ -39,4 +39,6 @@ uint8 DIO_u8SetPortValue(uint8 Copy_u8Port, uint8 Copy_u8Value );
 
 uint8 DIO_u8TogglePinDirection(uint8 Copy_u8Port, uint8 Copy_u8Pin );
 
+uint8 DIO_u8TogglePinValue(uint8 Copy_u8Port, uint8 Copy_u8Pin );
+
 #endif

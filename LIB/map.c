@@ -2,5 +2,7 @@
 
 sint32 Map(sint32 InputRangeMin, sint32 InputRangeMax , sint32 OutputRangeMin , sint32 OutputRangeMax , sint32 InputValue)
 {
-	return ( (OutputRangeMax - OutputRangeMin) / (InputRangeMax - InputRangeMin) ) * InputValue;
+	InputValue *= (InputRangeMax - InputRangeMin);
+	InputValue /= (OutputRangeMax - OutputRangeMin);
+	return InputValue;
 }
