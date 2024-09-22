@@ -85,65 +85,53 @@ uint8 TIMER1_u8Init(TIM_1_t* Copy_Configuration)
 
 	if(Copy_Configuration != NULL)
 	{
-/////////////////////////////////////////////////*Setting the waveform mode*/////////////////////////////////////////////////
+		/////////////////////////////////////////////////*Setting the waveform mode*/////////////////////////////////////////////////
 
-		/*Clear wave generation bits*/
-		TCCR1A &= 0b11111100;
-		TCCR1B &= 0b11100111;
+		/* Clear wave generation bits */
+		TCCR1A &= 0b11111100;  // Clear WGM10 and WGM11
+		TCCR1B &= 0b11100111;  // Clear WGM12 and WGM13
 
-		/*Separating the bits of the configuration for each register*/
-		uint8 Local_u8First_Half = Copy_Configuration -> Compare_PWM_Mode & 0b00000011;
-		uint8 Local_u8Second_Half = ((Copy_Configuration -> Compare_PWM_Mode & 0b00001100) << 1);
+		/* Set the correct WGM bits */
+		uint8 Local_u8First_Half = Copy_Configuration -> Wave_mode & 0b00000011;  // WGM10 and WGM11
+		uint8 Local_u8Second_Half = (Copy_Configuration -> Wave_mode & 0b00001100) << 1;  // WGM12 and WGM13
 
-		/*Set the wave form bits for the desired mode*/
-		TCCR1A |= Local_u8First_Half;
-		TCCR1B |= Local_u8Second_Half;
+		TCCR1A |= Local_u8First_Half;  // Set WGM10 and WGM11 in TCCR1A
+		TCCR1B |= Local_u8Second_Half; // Set WGM12 and WGM13 in TCCR1B
 
-/////////////////////////////////////////////////*Set Compare Match bits*/////////////////////////////////////////////////
+
+		/////////////////////////////////////////////////*Set Compare Match bits*/////////////////////////////////////////////////
 
 		if(Copy_Configuration -> Channel == Channel_A)
 		{
+			/*Clear the Compare Output bits*/
+			TCCR1A &= 0b00111111;
 
 			if(Copy_Configuration -> Wave_mode == CTC_OCR || Copy_Configuration -> Wave_mode == CTC_ICR)
 			{
-				/*Clear the Compare Output bits*/
-				TCCR0 &= 0b00111111;
 				/*Set compare output bits to the desired mode*/
-				TCCR0 |= ((Copy_Configuration -> Compare_Mode) << 6);
+				TCCR1A |= ((Copy_Configuration -> Compare_Mode) << 6);
 			}
-			else if(Copy_Configuration -> Wave_mode == Normal_COM)
+			else if(Copy_Configuration -> Wave_mode != Normal_COM)
 			{
-				/*Leave it for default*/
-			}
-			else
-			{
-				/*Clear the Compare Output bits*/
-				TCCR0 &= 0b00111111;
 				/*Set compare output bits to the desired mode*/
-				TCCR0 |= ((Copy_Configuration -> Compare_PWM_Mode) << 6);
+				TCCR1A |= ((Copy_Configuration -> Compare_PWM_Mode) << 6);
 			}
 
 		}
 		else if(Copy_Configuration -> Channel == Channel_B)
 		{
+			/*Clear the Compare Output bits*/
+			TCCR1A &= 0b11001111;
 
 			if(Copy_Configuration -> Wave_mode == CTC_OCR || Copy_Configuration -> Wave_mode == CTC_ICR)
 			{
-				/*Clear the Compare Output bits*/
-				TCCR0 &= 0b11001111;
 				/*Set compare output bits to the desired mode*/
-				TCCR0 |= ((Copy_Configuration -> Compare_Mode) << 4);
+				TCCR1A |= ((Copy_Configuration -> Compare_Mode) << 4);
 			}
-			else if(Copy_Configuration -> Wave_mode == Normal_COM)
+			else if(Copy_Configuration -> Wave_mode != Normal_COM)
 			{
-				/*Leave it for default*/
-			}
-			else
-			{
-				/*Clear the Compare Output bits*/
-				TCCR0 &= 0b11001111;
 				/*Set compare output bits to the desired mode*/
-				TCCR0 |= ((Copy_Configuration -> Compare_PWM_Mode) << 4);
+				TCCR1A |= ((Copy_Configuration -> Compare_PWM_Mode) << 4);
 			}
 
 		}
@@ -152,7 +140,7 @@ uint8 TIMER1_u8Init(TIM_1_t* Copy_Configuration)
 			Local_u8ErrState = NOK;
 		}
 
-/////////////////////////////////////////////////*Set Prescaler*/////////////////////////////////////////////////
+		/////////////////////////////////////////////////*Set Prescaler*/////////////////////////////////////////////////
 
 		/*Clear the Prescaler bits*/
 		TCCR1B &= 0b11111000;
@@ -225,7 +213,7 @@ uint8 TIMER2_u8Init(TIM_0_2_t* Copy_Configuration)
 		/*Clear the Prescaler bits*/
 		TCCR2 &= 0b11111000;
 		/*Set Prescaler bits to the desired mode*/
-		TCCR2 |= Copy_Configuration -> Prescaler;
+		TCCR2 |= Copy_Configuration -> Prescaler_2;
 	}
 	else
 	{
@@ -248,13 +236,13 @@ void TIMER_void_Int_Disable(uint8 Copy_u8_INT)
 	CLR_BIT(TIMSK , Copy_u8_INT);
 }
 
-uint8 TIMER_u8SetCallBack(uint8 Copy_uu8IntSource , void(*Copy_pvCallBackFunc)(void))
+uint8 TIMER_u8SetCallBack(uint8 Copy_u8IntSource , void(*Copy_pvCallBackFunc)(void))
 {
 	uint8 Local_u8ErrState = OK;
 
 	if(Copy_pvCallBackFunc !=NULL)
 	{
-		Timer_pvCallBackFunc[Copy_uu8IntSource] = Copy_pvCallBackFunc;
+		Timer_pvCallBackFunc[Copy_u8IntSource] = Copy_pvCallBackFunc;
 	}
 	else
 	{
@@ -264,19 +252,57 @@ uint8 TIMER_u8SetCallBack(uint8 Copy_uu8IntSource , void(*Copy_pvCallBackFunc)(v
 	return Local_u8ErrState;
 }
 
-void TIMER_voidSetPreloadValue(uint16 Copy_u16PreloadVal , volatile  uint8* Copy_pu8TIMER)
+void TIMER0_voidSetPreloadValue(uint8 Copy_u16PreloadVal)
 {
-	*Copy_pu8TIMER = Copy_u16PreloadVal;
+	TCNT0 = Copy_u16PreloadVal;
 }
 
-void TIMER_voidSetCompareMatchValue(uint16 Copy_u16CompMatchVal ,volatile  uint8* Copy_pu8TIMER)
+void TIMER1_voidSetPreloadValue(uint16 Copy_u16PreloadVal)
 {
-	*Copy_pu8TIMER = Copy_u16CompMatchVal;
+	TCNT1 = Copy_u16PreloadVal;
+}
+
+void TIMER2_voidSetPreloadValue(uint8 Copy_u16PreloadVal)
+{
+	TCNT2 = Copy_u16PreloadVal;
+}
+
+void TIMER0_voidSetCompareMatchValue(uint8 Copy_u16CompMatchVal)
+{
+	OCR0 = Copy_u16CompMatchVal;
+}
+
+void TIMER1A_voidSetCompareMatchValue(uint16 Copy_u16CompMatchVal)
+{
+	OCR1A = Copy_u16CompMatchVal;
+}
+
+void TIMER1B_voidSetCompareMatchValue(uint16 Copy_u16CompMatchVal)
+{
+	OCR1B = Copy_u16CompMatchVal;
+}
+
+void TIMER2_voidSetCompareMatchValue(uint8 Copy_u16CompMatchVal)
+{
+	OCR2 = Copy_u16CompMatchVal;
 }
 
 void TIMER_voidSetInputCaptureValue(uint16 Copy_u8CompMatchVal)
 {
 	ICR1 = Copy_u8CompMatchVal;
+}
+
+void TIMER_voidChooseICUTrigger(uint8 Copy_u8Trigger)
+{
+	/*Clear the trigger bit*/
+	TCCR1B &= 	0b10111111;
+	/*Set the desired option*/
+	TCCR1B |=	Copy_u8Trigger << 6;
+}
+
+uint16 TIMER_u16GetICUValue(void)
+{
+	return ICR1;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,9 +362,9 @@ void __vector_7 (void)
 __attribute__((signal)) void __vector_6 (void);
 void __vector_6 (void)
 {
-	if(Timer_pvCallBackFunc[TIMER0_ICU_INT] != NULL)
+	if(Timer_pvCallBackFunc[TIMER1_ICU_INT] != NULL)
 	{
-		Timer_pvCallBackFunc[TIMER0_ICU_INT]();
+		Timer_pvCallBackFunc[TIMER1_ICU_INT]();
 	}
 }
 
