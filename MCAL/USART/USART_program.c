@@ -17,7 +17,7 @@ void USART_voidInit(void)
 
 	SET_BIT(UCSRB , UCSRB_TXEN);
 
-#elif USART_Func == Transmit
+#elif USART_Func == Receive
 
 	SET_BIT(UCSRB , UCSRB_RXEN);
 
